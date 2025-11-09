@@ -1,29 +1,34 @@
-# Redis Sentinel Cluster (Docker Compose)
+# Redis Sentinel Cluster with Docker Compose
 
-This repository provides a **fully functional Redis Sentinel setup** using Docker Compose.
-
----
-
-## 🧩 Architecture
-
-| Component      | Role        | Internal Port | Host Port | Description            |
-|----------------|-------------|---------------|------------|------------------------|
-| redis-master   | Master       | 6379          | 6379       | Primary node           |
-| redis-replica1 | Replica      | 6379          | 6380       | Follows master         |
-| redis-replica2 | Replica      | 6379          | 6381       | Follows master         |
-| sentinel1      | Sentinel     | 26379         | 26379      | Monitors cluster       |
-| sentinel2      | Sentinel     | 26379         | 26380      | Monitors cluster       |
-| sentinel3      | Sentinel     | 26379         | 26381      | Monitors cluster       |
-| redis-insight  | UI Dashboard | 5540          | 5540       | Web management console |
-
-> Master, replicas and sentinels all share common config files (`redis.conf`, `sentinel.conf`).
+This repository provides a **fully functional Redis Sentinel** setup running on Docker Compose. It includes one master, two replicas, three sentinels, and optional Redis Insight for UI.
 
 ---
 
-## ⚙️ Configuration Files
+## Project Structure
 
-### `redis.conf`
+```
+sentinel-redis-with-docker/
+├── docker-compose.yml
+├── conf/
+│   ├── master/
+│   │   └── redis.conf
+│   ├── replica/
+│   │   └── redis.conf
+│   └── sentinel/
+│       └── sentinel.conf
+└── README.md
+```
 
+- `conf/master/redis.conf` → Master Redis configuration  
+- `conf/replica/redis.conf` → Replica configuration (both replicas use the same file)  
+- `conf/sentinel/sentinel.conf` → Sentinel configuration (all three use the same file)  
+
+---
+
+## Configuration (reference)
+
+### Master (`conf/master/redis.conf`)
+```
 bind 0.0.0.0
 protected-mode no
 port 6379
@@ -37,11 +42,28 @@ tcp-keepalive 60
 maxclients 10000
 loglevel notice
 dir /data
+```
 
----
+### Replica (`conf/replica/redis.conf`)
+```
+bind 0.0.0.0
+protected-mode no
+port 6379
 
-### `sentinel.conf`
+requirepass S3cureRedis!2025
+masterauth S3cureRedis!2025
+replicaof redis-master 6379
 
+appendonly yes
+appendfsync everysec
+tcp-keepalive 60
+maxclients 10000
+loglevel notice
+dir /data
+```
+
+### Sentinel (`conf/sentinel/sentinel.conf`)
+```
 bind 0.0.0.0
 port 26379
 protected-mode no
@@ -52,67 +74,95 @@ sentinel auth-pass mymaster S3cureRedis!2025
 sentinel down-after-milliseconds mymaster 5000
 sentinel failover-timeout mymaster 10000
 sentinel parallel-syncs mymaster 1
+```
+
+> All sentinels use the same internal port (26379). Host ports are mapped uniquely via Docker compose (26379/26380/26381).
 
 ---
 
-## 🚀 How to Run
+## Services & Ports
 
+| Service        | Role        | Host Port | Container Port |
+|----------------|-------------|-----------|----------------|
+| redis-master   | Master      | 6379      | 6379           |
+| redis-replica1 | Replica     | 6380      | 6379           |
+| redis-replica2 | Replica     | 6381      | 6379           |
+| sentinel1      | Sentinel    | 26379     | 26379          |
+| sentinel2      | Sentinel    | 26380     | 26379          |
+| sentinel3      | Sentinel    | 26381     | 26379          |
+| redis-insight  | UI          | 5540      | 5540           |
+
+---
+
+## Run
+
+```
 docker compose up -d
+```
 
-Verify all containers are running:
+Verify containers:
 
+```
 docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
+```
 
 ---
 
-## 🧪 Quick Tests
+## Quick Tests
 
-### 1️⃣ Health
+### 1) Health
+```
 redis-cli -h 127.0.0.1 -p 6379 -a S3cureRedis!2025 ping
 redis-cli -h 127.0.0.1 -p 6380 -a S3cureRedis!2025 ping
 redis-cli -h 127.0.0.1 -p 6381 -a S3cureRedis!2025 ping
+```
 
-### 2️⃣ Replication
+### 2) Replication
+```
 redis-cli -h 127.0.0.1 -p 6379 -a S3cureRedis!2025 set city "Istanbul"
 redis-cli -h 127.0.0.1 -p 6380 -a S3cureRedis!2025 get city
 redis-cli -h 127.0.0.1 -p 6381 -a S3cureRedis!2025 get city
+```
 
-### 3️⃣ Sentinel Status
+### 3) Sentinel Status
+```
 redis-cli -h 127.0.0.1 -p 26379 SENTINEL GET-MASTER-ADDR-BY-NAME mymaster
 redis-cli -h 127.0.0.1 -p 26379 SENTINEL SLAVES mymaster
+```
 
-### 4️⃣ Manual Failover
+### 4) Manual Failover
+```
 redis-cli -h 127.0.0.1 -p 26379 SENTINEL FAILOVER mymaster
+```
 
-### 5️⃣ Automatic Failover
-Stop master:
+### 5) Automatic Failover
+```
 docker stop redis-master
 sleep 10
 redis-cli -h 127.0.0.1 -p 26379 SENTINEL GET-MASTER-ADDR-BY-NAME mymaster
-
-Restart master:
 docker start redis-master
+```
 
 ---
 
-## 🧠 Notes
+## Notes
 
-- Default password: S3cureRedis!2025
-- Redis Insight UI: http://localhost:5540
-- All `data/` folders are mounted volumes and ignored in Git via `.gitignore`.
-
----
-
-## ✅ Test Summary
-
-1. Cluster health check ✅  
-2. Replication sync ✅  
-3. Role verification ✅  
-4. Sentinel connectivity ✅  
-5. Manual failover ✅  
-6. Automatic failover ✅  
-7. Data consistency ✅  
+- Default password: `S3cureRedis!2025`
+- Redis Insight UI: `http://localhost:5540`
+- `/data` folders are mounted volumes and should be ignored by Git.
+- If you see `WRONGTYPE` on `GET city`, it means `city` exists with a non-string type (e.g., a Set). Delete and re-create:
+  ```
+  redis-cli -h 127.0.0.1 -p <port> -a S3cureRedis!2025 type city
+  redis-cli -h 127.0.0.1 -p <port> -a S3cureRedis!2025 del city
+  redis-cli -h 127.0.0.1 -p <port> -a S3cureRedis!2025 set city "Istanbul"
+  ```
 
 ---
 
-© 2025 – Redis Sentinel Cluster by Burak Çalışgan
+## Test Checklist
+
+- Cluster health ✅
+- Replication sync ✅
+- Sentinel monitoring ✅
+- Manual & automatic failover ✅
+- Data consistency ✅
