@@ -4,7 +4,7 @@ services:
     container_name: redis-master
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
-      - ./master/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./conf/master/redis.conf:/usr/local/etc/redis/redis.conf
       - ./data/master:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "S3cureRedis!2025", "ping"]
@@ -22,7 +22,7 @@ services:
         condition: service_healthy
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
-      - ./replica1/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./conf/replica/redis.conf:/usr/local/etc/redis/redis.conf
       - ./data/replica1:/data
     ports:
       - "6380:6379"
@@ -35,7 +35,7 @@ services:
         condition: service_healthy
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     volumes:
-      - ./replica2/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./conf/replica/redis.conf:/usr/local/etc/redis/redis.conf
       - ./data/replica2:/data
     ports:
       - "6381:6379"
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
     command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
     volumes:
-      - ./sentinel/sentinel1.conf:/usr/local/etc/sentinel/sentinel.conf
+      - ./conf/sentinel/sentinel.conf:/usr/local/etc/sentinel/sentinel.conf
     ports:
       - "26379:26379"
 
@@ -60,7 +60,7 @@ services:
         condition: service_healthy
     command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
     volumes:
-      - ./sentinel/sentinel2.conf:/usr/local/etc/sentinel/sentinel.conf
+      - ./conf/sentinel/sentinel.conf:/usr/local/etc/sentinel/sentinel.conf
     ports:
       - "26380:26379"
 
@@ -72,7 +72,7 @@ services:
         condition: service_healthy
     command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
     volumes:
-      - ./sentinel/sentinel3.conf:/usr/local/etc/sentinel/sentinel.conf
+      - ./conf/sentinel/sentinel.conf:/usr/local/etc/sentinel/sentinel.conf
     ports:
       - "26381:26379"
 
