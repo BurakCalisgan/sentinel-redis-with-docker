@@ -1,0 +1,85 @@
+services:
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./master/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./data/master:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "S3cureRedis!2025", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "6379:6379"
+
+  redis-replica1:
+    image: redis:latest
+    container_name: redis-replica1
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./replica1/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./data/replica1:/data
+    ports:
+      - "6380:6379"
+
+  redis-replica2:
+    image: redis:latest
+    container_name: redis-replica2
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./replica2/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./data/replica2:/data
+    ports:
+      - "6381:6379"
+
+  sentinel1:
+    image: redis:latest
+    container_name: sentinel1
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
+    volumes:
+      - ./sentinel/sentinel1.conf:/usr/local/etc/sentinel/sentinel.conf
+    ports:
+      - "26379:26379"
+
+  sentinel2:
+    image: redis:latest
+    container_name: sentinel2
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
+    volumes:
+      - ./sentinel/sentinel2.conf:/usr/local/etc/sentinel/sentinel.conf
+    ports:
+      - "26380:26379"
+
+  sentinel3:
+    image: redis:latest
+    container_name: sentinel3
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    command: ["redis-sentinel", "/usr/local/etc/sentinel/sentinel.conf"]
+    volumes:
+      - ./sentinel/sentinel3.conf:/usr/local/etc/sentinel/sentinel.conf
+    ports:
+      - "26381:26379"
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    restart: always
+    

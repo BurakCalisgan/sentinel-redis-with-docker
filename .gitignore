@@ -1,0 +1,29 @@
+# Redis Sentinel Docker Compose project
+
+# Redis data directories
+/data/
+*/data/
+
+# Redis appendonly and dump files
+appendonly.aof
+dump.rdb
+
+# Log files
+*.log
+*.tmp
+*.pid
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Node / build cache (if used for monitoring dashboards)
+node_modules/
+dist/
+build/
+
+# Docker
+*.env
+docker-compose.override.yml
